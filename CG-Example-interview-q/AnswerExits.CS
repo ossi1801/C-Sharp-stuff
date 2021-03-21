@@ -5,8 +5,9 @@ public class Answer
 {
 	public static bool Exists(int[] ints, int k)
 	{
-		if (ints.Contains(k))return true;
-		else return false;
+		/*if (ints.Contains(k))return true;
+		else return false;*/ //Slow
+		return Array.BinarySearch(ints, k) >= 0; //fast
 	}
 
 }

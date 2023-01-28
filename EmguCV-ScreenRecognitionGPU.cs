@@ -1,22 +1,24 @@
-
+//Object recognition with Emgu.CV using GPU
 using Emgu.CV;
-using System.Numerics;
 using Emgu.CV.Util;
 using Emgu.CV.Structure;
 using Emgu.CV.Dnn;
 using Emgu.CV.CvEnum;
-using Emgu.Util;
 using Emgu.CV.Cuda;
 using System.Drawing;
-using System;
 using System.Runtime.InteropServices;
-using System.Collections.Generic;
-using static System.Net.Mime.MediaTypeNames;
 
+//Download Weights and config for YOLO in below link
+//------
 //https://pjreddie.com/darknet/yolo/
+//------------
 //https://www.emgu.com/wiki/files/4.5.1/document/html/219dd707-ca8f-374d-2ed4-f0e8dc612ace.htm
 //https://www.emgu.com/wiki/index.php/Working_with_Images#Creating_image_from_Bitmap
-//NuGet\Install-Package System.Drawing.Common -Version 7.0.0
+//Requirements:
+//  NuGet\Install-Package System.Drawing.Common -Version 7.0.0
+//  Emgu.CV  - Version : 4.4.0.4099
+//  Emgu.CV.Bitmap  - Version : 4.4.0.4099
+//  Emgu.CV.runtime.windows.cuda  - Version : 4.4.0.4099, NOTE DO NOT HAVE 2 RUNTIMES (CPU & GPU) INSTALLED AT THE SAME TIME PROGRAM WILL CRASH OR DEFAULT TO CPU!
 internal class Program
 {
 
@@ -28,15 +30,15 @@ internal class Program
             Console.WriteLine("CUDA ON");
         }
         else
-            Console.WriteLine("no gpu sadge..");
+            throw new Exception("CUDA IS NOT INSTALLED PROPERLY CHECK DRIVERS AND PACKAGES");
 
-        var net = Emgu.CV.Dnn.DnnInvoke.ReadNetFromDarknet(
+        var net = DnnInvoke.ReadNetFromDarknet(
             "\yolov3.cfg",
             "\yolov3.weights"
             );
         var classLabels = File.ReadAllLines("\coco.names");
 
-        net.SetPreferableBackend(Emgu.CV.Dnn.Backend.OpenCV);
+        net.SetPreferableBackend(Emgu.CV.Dnn.Backend.Cuda);
         net.SetPreferableTarget(Emgu.CV.Dnn.Target.Cuda);
 
         List<Tuple<int, int, int>> ColorList = new List<Tuple<int, int, int>>();
@@ -57,7 +59,7 @@ internal class Program
 
         while (true)
         {
-            var bmp = (Bitmap)ScreenCapture.CaptureDesktop();
+            var bmp = (Bitmap)ScreenCapture.CaptureDesktop(); //Cap screen
             Image<Bgr, byte> image = bmp.ToImage<Bgr, byte>().Resize(416, 416, Inter.Area);
             frame = image.Mat; //Grab mat from image
 
@@ -78,11 +80,9 @@ internal class Program
                 float[,] data = (float[,])mat.GetData();
                 for (int j = 0; j < data.GetLength(0); j++)
                 {
-                    var row = Enumerable.Range(0, data.GetLength(1)).Select(x => data[j, x]).ToList(); //Get rows
-
-                    var rowScore = new List<float>(row);
-                    rowScore.RemoveRange(0, 5);
-                    //var rowScore = row.Skip(5).ToList();
+                    List<float> row = Enumerable.Range(0, data.GetLength(1)).Select(x => data[j, x]).ToList(); //Get rows
+                    List<float> rowScore = new List<float>(row); //Copy
+                    rowScore.RemoveRange(0, 5); //Remove useless
                     var classId = rowScore.IndexOf(rowScore.Max());
                     var confidence = rowScore[classId];
 

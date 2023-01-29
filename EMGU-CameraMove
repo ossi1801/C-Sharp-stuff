@@ -1,0 +1,259 @@
+
+    public static void checkForPerson(Rectangle rectangle, string label)
+    {
+        if (label.ToLower() == "person")
+        {
+            int w = rectangle.Width / 2;
+            int h = rectangle.Height / 2;
+            int x = (int)((rectangle.X + w) * 4.615384615384615);
+            int y = (int)((rectangle.Y + h) * 2.596153846153846);
+            int xx = x-960;
+            int yy = y-540;
+            Console.WriteLine(xx);
+            Console.WriteLine(yy);
+            Input[] inputs = new Input[]
+            {
+                new Input
+                {
+                    type = (int) InputType.Mouse,
+                    u = new InputUnion
+                    {
+
+                        mi = new MouseInput
+                        {
+                            dx = xx,
+                            dy = yy,                         
+                            dwFlags =  (xx < 10 && yy < 10 && xx>-10 && yy>-10 ) ? (uint)(MouseEventF.Move| MouseEventF.LeftDown): (uint)(MouseEventF.Move), //| MouseEventF.LeftDown),
+                            dwExtraInfo = GetMessageExtraInfo()
+                        }
+                    }
+                },
+                new Input
+                {
+                    type = (int) InputType.Mouse,
+                    u = new InputUnion
+                    {
+                        mi = new MouseInput
+                        {
+                            dwFlags = (uint)MouseEventF.LeftUp,
+                            dwExtraInfo = GetMessageExtraInfo()
+                        }
+                    }
+                }
+            };
+
+            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(Input)));
+
+            // var p = MouseOperations.GetCursorPosition();
+            // if (x > p.X) 
+            //     for (int i = p.X; i < x; i++)
+            //     {
+            //         MouseOperations.SetCursorPosition(i, y);
+            //         //Thread.Sleep(1);
+            //     }
+            // else
+            // {
+            //     for (int i = p.X; i > x; i--)
+            //     {
+            //         MouseOperations.SetCursorPosition(i, y);
+            //     }
+            // }
+            //
+        }
+    }
+    public class ScreenCapture
+    {
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
+        public static extern IntPtr GetDesktopWindow();
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Rect
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetWindowRect(IntPtr hWnd, ref Rect rect);
+
+        public static System.Drawing.Image CaptureDesktop()
+        {
+            return CaptureWindow(GetDesktopWindow());
+        }
+
+        public static Bitmap CaptureActiveWindow()
+        {
+            return CaptureWindow(GetForegroundWindow());
+        }
+
+        public static Bitmap CaptureWindow(IntPtr handle)
+        {
+            var rect = new Rect();
+            GetWindowRect(handle, ref rect);
+            var bounds = new Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+            var result = new Bitmap(bounds.Width, bounds.Height);
+
+            using (var graphics = Graphics.FromImage(result))
+            {
+                graphics.CopyFromScreen(new Point(bounds.Left, bounds.Top), Point.Empty, bounds.Size);
+            }
+
+            return result;
+        }
+    }
+    public class MouseOperations
+    {
+        [Flags]
+        public enum MouseEventFlags
+        {
+            LeftDown = 0x00000002,
+            LeftUp = 0x00000004,
+            MiddleDown = 0x00000020,
+            MiddleUp = 0x00000040,
+            Move = 0x00000001,
+            Absolute = 0x00008000,
+            RightDown = 0x00000008,
+            RightUp = 0x00000010
+        }
+
+        [DllImport("user32.dll", EntryPoint = "SetCursorPos")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetCursorPos(int x, int y);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetCursorPos(out MousePoint lpMousePoint);
+
+        [DllImport("user32.dll")]
+        private static extern void mouse_event(int dwFlags, int dx, int dy, int dwData, int dwExtraInfo);
+
+        public static void SetCursorPosition(int x, int y)
+        {
+            SetCursorPos(x, y);
+        }
+
+        public static void SetCursorPosition(MousePoint point)
+        {
+            SetCursorPos(point.X, point.Y);
+        }
+
+        public static MousePoint GetCursorPosition()
+        {
+            MousePoint currentMousePoint;
+            var gotPoint = GetCursorPos(out currentMousePoint);
+            if (!gotPoint) { currentMousePoint = new MousePoint(0, 0); }
+            return currentMousePoint;
+        }
+
+        public static void MouseEvent(MouseEventFlags value)
+        {
+            MousePoint position = GetCursorPosition();
+
+            mouse_event
+                ((int)value,
+                 position.X,
+                 position.Y,
+                 0,
+                 0)
+                ;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MousePoint
+        {
+            public int X;
+            public int Y;
+
+            public MousePoint(int x, int y)
+            {
+                X = x;
+                Y = y;
+            }
+        }
+    }
+
+    public class plswork
+    {
+        [StructLayout(LayoutKind.Sequential)]
+        public struct KeyboardInput
+        {
+            public ushort wVk;
+            public ushort wScan;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MouseInput
+        {
+            public int dx;
+            public int dy;
+            public uint mouseData;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+        [StructLayout(LayoutKind.Sequential)]
+        public struct HardwareInput
+        {
+            public uint uMsg;
+            public ushort wParamL;
+            public ushort wParamH;
+        }
+        [StructLayout(LayoutKind.Explicit)]
+        public struct InputUnion
+        {
+            [FieldOffset(0)] public MouseInput mi;
+            [FieldOffset(0)] public KeyboardInput ki;
+            [FieldOffset(0)] public HardwareInput hi;
+        }
+        public struct Input
+        {
+            public int type;
+            public InputUnion u;
+        }
+        [Flags]
+        public enum InputType
+        {
+            Mouse = 0,
+            Keyboard = 1,
+            Hardware = 2
+        }
+        [Flags]
+        public enum KeyEventF
+        {
+            KeyDown = 0x0000,
+            ExtendedKey = 0x0001,
+            KeyUp = 0x0002,
+            Unicode = 0x0004,
+            Scancode = 0x0008
+        }
+        [Flags]
+        public enum MouseEventF
+        {
+            Absolute = 0x8000,
+            HWheel = 0x01000,
+            Move = 0x0001,
+            MoveNoCoalesce = 0x2000,
+            LeftDown = 0x0002,
+            LeftUp = 0x0004,
+            RightDown = 0x0008,
+            RightUp = 0x0010,
+            MiddleDown = 0x0020,
+            MiddleUp = 0x0040,
+            VirtualDesk = 0x4000,
+            Wheel = 0x0800,
+            XDown = 0x0080,
+            XUp = 0x0100
+        }
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern uint SendInput(uint nInputs, Input[] pInputs, int cbSize);
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetMessageExtraInfo();
+    }
+}
